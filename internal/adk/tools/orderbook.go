@@ -3,13 +3,15 @@ package tools
 import (
 	"fmt"
 
+	"github.com/run-bigpig/jcp/internal/services"
+
 	"google.golang.org/adk/tool"
 	"google.golang.org/adk/tool/functiontool"
 )
 
 // GetOrderBookInput 盘口数据输入参数
 type GetOrderBookInput struct {
-	Code string `json:"code" jsonschema:"股票代码，如 sh600519"`
+	Code string `json:"code" jsonschema:"股票代码，如 sh600519（仅A股支持五档盘口）"`
 }
 
 // GetOrderBookOutput 盘口数据输出
@@ -25,6 +27,11 @@ func (r *Registry) createOrderBookTool() (tool.Tool, error) {
 		if input.Code == "" {
 			fmt.Println("[Tool:get_orderbook] 错误: 未提供股票代码")
 			return GetOrderBookOutput{Data: "请提供股票代码"}, nil
+		}
+
+		// 美股没有五档盘口数据
+		if services.IsUSStock(input.Code) {
+			return GetOrderBookOutput{Data: "美股不支持五档盘口数据查询"}, nil
 		}
 
 		ob, err := r.marketService.GetRealOrderBook(input.Code)
@@ -50,6 +57,6 @@ func (r *Registry) createOrderBookTool() (tool.Tool, error) {
 
 	return functiontool.New(functiontool.Config{
 		Name:        "get_orderbook",
-		Description: "获取股票五档盘口数据，显示买卖五档的价格和挂单量",
+		Description: "获取股票五档盘口数据，显示买卖五档的价格和挂单量（仅A股支持）",
 	}, handler)
 }

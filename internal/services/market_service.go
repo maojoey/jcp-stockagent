@@ -61,6 +61,29 @@ type todayHolidayCache struct {
 	timestamp time.Time
 }
 
+// ConfigProvider 配置提供接口（避免循环依赖）
+type ConfigProvider interface {
+	GetFinnhubAPIKey() string
+}
+
+// IsUSStock 判断是否为美股代码
+func IsUSStock(code string) bool {
+	if code == "" {
+		return false
+	}
+	// A股代码以 sh/sz/s_ 开头
+	if strings.HasPrefix(code, "sh") || strings.HasPrefix(code, "sz") || strings.HasPrefix(code, "s_") {
+		return false
+	}
+	// 美股代码：纯大写字母，可能包含 . 或 - (如 BRK.B)
+	for _, c := range code {
+		if !((c >= 'A' && c <= 'Z') || c == '.' || c == '-') {
+			return false
+		}
+	}
+	return true
+}
+
 // MarketService 市场数据服务
 type MarketService struct {
 	client *http.Client
@@ -73,14 +96,18 @@ type MarketService struct {
 	// 当天节假日缓存
 	todayCache   *todayHolidayCache
 	todayCacheMu sync.RWMutex
+
+	// 配置服务（用于获取 Finnhub API Key 等）
+	configService ConfigProvider
 }
 
 // NewMarketService 创建市场数据服务
-func NewMarketService() *MarketService {
+func NewMarketService(configService ConfigProvider) *MarketService {
 	return &MarketService{
-		client:   proxy.GetManager().GetClientWithTimeout(10 * time.Second),
-		cache:    make(map[string]*stockCache),
-		cacheTTL: 2 * time.Second, // 缓存2秒，避免频繁请求
+		client:        proxy.GetManager().GetClientWithTimeout(10 * time.Second),
+		cache:         make(map[string]*stockCache),
+		cacheTTL:      2 * time.Second, // 缓存2秒，避免频繁请求
+		configService: configService,
 	}
 }
 
@@ -165,12 +192,48 @@ func (ms *MarketService) parseSinaStockDataWithOrderBook(data string) ([]StockWi
 	return stocks, nil
 }
 
-// GetStockRealTimeData 获取股票实时数据
+// GetStockRealTimeData 获取股票实时数据（自动区分A股/美股）
 func (ms *MarketService) GetStockRealTimeData(codes ...string) ([]models.Stock, error) {
 	if len(codes) == 0 {
 		return nil, nil
 	}
 
+	// 分离A股和美股代码
+	var cnCodes, usCodes []string
+	for _, code := range codes {
+		if IsUSStock(code) {
+			usCodes = append(usCodes, code)
+		} else {
+			cnCodes = append(cnCodes, code)
+		}
+	}
+
+	var allStocks []models.Stock
+
+	// 获取A股数据
+	if len(cnCodes) > 0 {
+		stocks, err := ms.getCNStockRealTimeData(cnCodes...)
+		if err != nil {
+			return nil, err
+		}
+		allStocks = append(allStocks, stocks...)
+	}
+
+	// 获取美股数据
+	if len(usCodes) > 0 {
+		stocks, err := ms.getUSStockRealTimeData(usCodes...)
+		if err != nil {
+			log.Warn("获取美股数据失败: %v", err)
+		} else {
+			allStocks = append(allStocks, stocks...)
+		}
+	}
+
+	return allStocks, nil
+}
+
+// getCNStockRealTimeData 获取A股实时数据（原有逻辑）
+func (ms *MarketService) getCNStockRealTimeData(codes ...string) ([]models.Stock, error) {
 	codeList := strings.Join(codes, ",")
 	url := fmt.Sprintf(sinaStockURL, time.Now().UnixNano(), codeList)
 
@@ -326,8 +389,16 @@ func (ms *MarketService) calculateOrderBookTotals(items []models.OrderBookItem) 
 	}
 }
 
-// GetKLineData 获取K线数据
+// GetKLineData 获取K线数据（自动区分A股/美股）
 func (ms *MarketService) GetKLineData(code string, period string, days int) ([]models.KLineData, error) {
+	if IsUSStock(code) {
+		return ms.getUSKLineData(code, period, days)
+	}
+	return ms.getCNKLineData(code, period, days)
+}
+
+// getCNKLineData 获取A股K线数据（原有逻辑）
+func (ms *MarketService) getCNKLineData(code string, period string, days int) ([]models.KLineData, error) {
 	scale := ms.periodToScale(period)
 	url := fmt.Sprintf(sinaKLineURL, code, scale, days)
 
@@ -468,8 +539,11 @@ func (ms *MarketService) parseKLineData(data string) ([]models.KLineData, error)
 	return klines, nil
 }
 
-// GetRealOrderBook 获取真实盘口数据
+// GetRealOrderBook 获取真实盘口数据（美股无五档盘口，返回空）
 func (ms *MarketService) GetRealOrderBook(code string) (models.OrderBook, error) {
+	if IsUSStock(code) {
+		return models.OrderBook{}, nil
+	}
 	data, err := ms.GetStockDataWithOrderBook(code)
 	if err != nil || len(data) == 0 {
 		return models.OrderBook{}, err
@@ -626,8 +700,18 @@ func (ms *MarketService) fetchTodayHolidayStatus() (bool, string) {
 	return apiResp.IsHoliday, apiResp.Note
 }
 
-// GetMarketIndices 获取大盘指数数据
+// GetMarketIndices 获取大盘指数数据（A股）
 func (ms *MarketService) GetMarketIndices() ([]models.MarketIndex, error) {
+	return ms.getCNMarketIndices()
+}
+
+// GetUSMarketIndices 获取美股三大指数
+func (ms *MarketService) GetUSMarketIndices() ([]models.MarketIndex, error) {
+	return ms.getUSMarketIndices()
+}
+
+// getCNMarketIndices 获取A股大盘指数（原有逻辑）
+func (ms *MarketService) getCNMarketIndices() ([]models.MarketIndex, error) {
 	codeList := strings.Join(defaultIndexCodes, ",")
 	url := fmt.Sprintf(sinaStockURL, time.Now().UnixNano(), codeList)
 

@@ -51,25 +51,25 @@ func NewRegistry(
 // registerAllTools 注册所有工具
 func (r *Registry) registerAllTools() {
 	// 注册股票实时数据工具
-	r.registerTool("get_stock_realtime", "获取股票实时行情数据，包括当前价格、涨跌幅、开盘价、最高价、最低价、成交量等", r.createStockRealtimeTool)
+	r.registerTool("get_stock_realtime", "获取股票实时行情数据（支持A股和美股），包括价格、涨跌幅等，以及对应市场大盘指数", r.createStockRealtimeTool)
 
 	// 注册K线数据工具
-	r.registerTool("get_kline_data", "获取股票K线数据，支持5分钟线、日线、周线、月线", r.createKLineTool)
+	r.registerTool("get_kline_data", "获取股票K线数据（支持A股和美股），支持分时线、日线、周线、月线", r.createKLineTool)
 
 	// 注册盘口数据工具
-	r.registerTool("get_orderbook", "获取股票五档盘口数据，包括买卖五档价格和数量", r.createOrderBookTool)
+	r.registerTool("get_orderbook", "获取股票五档盘口数据（仅A股），包括买卖五档价格和数量", r.createOrderBookTool)
 
 	// 注册快讯工具
-	r.registerTool("get_news", "获取最新财经快讯，来源于财联社", r.createNewsTool)
+	r.registerTool("get_news", "获取财经新闻快讯，A股来源于财联社；提供美股代码时获取对应个股英文新闻", r.createNewsTool)
 
 	// 注册股票搜索工具
-	r.registerTool("search_stocks", "搜索股票，根据关键词搜索股票代码和名称", r.createSearchStocksTool)
+	r.registerTool("search_stocks", "搜索股票，支持同时搜索A股和美股", r.createSearchStocksTool)
 
 	// 注册研报查询工具
-	r.registerTool("get_research_report", "获取个股研报列表，包括券商评级、研究员、预测EPS/PE等信息", r.createResearchReportTool)
+	r.registerTool("get_research_report", "获取个股研报/分析师推荐（A股研报、美股分析师推荐）", r.createResearchReportTool)
 
 	// 注册研报内容查询工具
-	r.registerTool("get_report_content", "获取研报正文内容，需要先通过 get_research_report 获取 infoCode", r.createReportContentTool)
+	r.registerTool("get_report_content", "获取A股研报正文内容，需要先通过 get_research_report 获取 infoCode", r.createReportContentTool)
 
 	// 注册舆情热点工具
 	r.registerTool("get_hottrend", "获取全网舆情热点，支持微博、知乎、B站、百度、抖音、头条等平台的实时热搜榜单", r.createHotTrendTool)

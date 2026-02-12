@@ -6,7 +6,7 @@ import (
 
 // TestGetStockRealTimeData 测试获取实时股票数据
 func TestGetStockRealTimeData(t *testing.T) {
-	ms := NewMarketService()
+	ms := NewMarketService(nil)
 
 	// 测试上海股票 (贵州茅台)
 	t.Run("上海股票", func(t *testing.T) {
@@ -70,7 +70,7 @@ func TestGetStockRealTimeData(t *testing.T) {
 
 // TestGetStockDataWithOrderBook 测试获取股票数据含盘口
 func TestGetStockDataWithOrderBook(t *testing.T) {
-	ms := NewMarketService()
+	ms := NewMarketService(nil)
 
 	t.Run("获取盘口数据", func(t *testing.T) {
 		data, err := ms.GetStockDataWithOrderBook("sh600519")
@@ -108,7 +108,7 @@ func TestGetStockDataWithOrderBook(t *testing.T) {
 
 // TestGetKLineData 测试获取K线数据
 func TestGetKLineData(t *testing.T) {
-	ms := NewMarketService()
+	ms := NewMarketService(nil)
 
 	t.Run("日K线", func(t *testing.T) {
 		data, err := ms.GetKLineData("sh600519", "1d", 10)

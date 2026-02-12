@@ -3,20 +3,22 @@ package tools
 import (
 	"fmt"
 
+	"github.com/run-bigpig/jcp/internal/services"
+
 	"google.golang.org/adk/tool"
 	"google.golang.org/adk/tool/functiontool"
 )
 
 // GetResearchReportInput 研报查询输入参数
 type GetResearchReportInput struct {
-	Code     string `json:"code" jsonschema:"股票代码，如 sz000001 或 000001"`
+	Code     string `json:"code" jsonschema:"股票代码，A股如 sz000001 或 000001；美股如 AAPL"`
 	PageSize int    `json:"pageSize,omitzero" jsonschema:"每页数量，默认10"`
 	PageNo   int    `json:"pageNo,omitzero" jsonschema:"页码，默认1"`
 }
 
 // GetResearchReportOutput 研报查询输出
 type GetResearchReportOutput struct {
-	Data       string `json:"data" jsonschema:"研报数据"`
+	Data       string `json:"data" jsonschema:"研报/推荐数据"`
 	TotalCount int    `json:"totalCount" jsonschema:"总数量"`
 }
 
@@ -31,6 +33,12 @@ func (r *Registry) createResearchReportTool() (tool.Tool, error) {
 			return GetResearchReportOutput{Data: "请提供股票代码"}, nil
 		}
 
+		// 美股使用 Finnhub 分析师推荐
+		if services.IsUSStock(input.Code) {
+			return r.getUSRecommendation(input.Code)
+		}
+
+		// A股使用东方财富研报
 		pageSize := input.PageSize
 		if pageSize == 0 {
 			pageSize = 10
@@ -57,13 +65,43 @@ func (r *Registry) createResearchReportTool() (tool.Tool, error) {
 
 	return functiontool.New(functiontool.Config{
 		Name:        "get_research_report",
-		Description: "获取个股研报列表，包括券商评级、研究员、预测EPS/PE等信息",
+		Description: "获取个股研报/分析师推荐。A股返回券商评级和研报；美股返回分析师买入/卖出/持有推荐趋势",
 	}, handler)
+}
+
+// getUSRecommendation 获取美股分析师推荐
+func (r *Registry) getUSRecommendation(symbol string) (GetResearchReportOutput, error) {
+	recs, err := r.marketService.GetUSRecommendations(symbol)
+	if err != nil {
+		fmt.Printf("[Tool:get_research_report] 获取美股推荐失败: %v\n", err)
+		return GetResearchReportOutput{}, err
+	}
+
+	if len(recs) == 0 {
+		return GetResearchReportOutput{Data: "暂无分析师推荐数据"}, nil
+	}
+
+	var result string
+	limit := len(recs)
+	if limit > 6 {
+		limit = 6
+	}
+	for i, rec := range recs[:limit] {
+		result += fmt.Sprintf("%d. 【%s】%s\n", i+1, rec.Symbol, rec.Period)
+		result += fmt.Sprintf("   强烈买入:%d | 买入:%d | 持有:%d | 卖出:%d | 强烈卖出:%d\n\n",
+			rec.StrongBuy, rec.Buy, rec.Hold, rec.Sell, rec.StrongSell)
+	}
+
+	fmt.Printf("[Tool:get_research_report] 调用完成, 返回%d条美股推荐\n", limit)
+	return GetResearchReportOutput{
+		Data:       result,
+		TotalCount: len(recs),
+	}, nil
 }
 
 // GetReportContentInput 研报内容查询输入参数
 type GetReportContentInput struct {
-	InfoCode string `json:"infoCode" jsonschema:"研报唯一标识码，从研报列表中获取"`
+	InfoCode string `json:"infoCode" jsonschema:"研报唯一标识码，从研报列表中获取（仅A股）"`
 }
 
 // GetReportContentOutput 研报内容查询输出
@@ -98,6 +136,6 @@ func (r *Registry) createReportContentTool() (tool.Tool, error) {
 
 	return functiontool.New(functiontool.Config{
 		Name:        "get_report_content",
-		Description: "获取研报正文内容，需要先通过 get_research_report 获取研报列表中的 infoCode",
+		Description: "获取A股研报正文内容，需要先通过 get_research_report 获取研报列表中的 infoCode",
 	}, handler)
 }

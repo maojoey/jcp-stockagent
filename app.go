@@ -71,7 +71,7 @@ func NewApp() *App {
 		log.Warn("HotTrend service error: %v", err)
 	}
 
-	marketService := services.NewMarketService()
+	marketService := services.NewMarketService(configService)
 	newsService := services.NewNewsService()
 
 	// 初始化龙虎榜服务

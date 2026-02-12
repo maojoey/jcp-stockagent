@@ -95,6 +95,7 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({ isOpen, onClose 
     mode: 'none',
     customUrl: '',
   });
+  const [finnhubApiKey, setFinnhubApiKey] = useState<string>('');
   const [strategies, setStrategies] = useState<Strategy[]>([]);
   const [activeStrategyId, setActiveStrategyId] = useState<string>('');
   const [moderatorAiId, setModeratorAiId] = useState<string>('');
@@ -123,6 +124,7 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({ isOpen, onClose 
     }
     if (config.moderatorAiId) setModeratorAiId(config.moderatorAiId);
     if (config.strategyAiId) setStrategyAiId(config.strategyAiId);
+    if (config.finnhubApiKey) setFinnhubApiKey(config.finnhubApiKey);
 
     // 加载策略配置
     const loadedStrategies = await getStrategies();
@@ -153,6 +155,7 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({ isOpen, onClose 
     proxy: ProxyConfig;
     moderatorAiId: string;
     strategyAiId: string;
+    finnhubApiKey: string;
   }>>({});
 
   // 实际执行保存的函数
@@ -185,6 +188,7 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({ isOpen, onClose 
     proxy: ProxyConfig;
     moderatorAiId: string;
     strategyAiId: string;
+    finnhubApiKey: string;
   }>) => {
     // 合并待保存的更新
     pendingUpdatesRef.current = { ...pendingUpdatesRef.current, ...updates };
@@ -219,7 +223,7 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({ isOpen, onClose 
     { id: 'strategy', label: '策略管理', icon: <Layers className="h-4 w-4" /> },
     { id: 'mcp', label: 'MCP服务', icon: <Plug className="h-4 w-4" /> },
     { id: 'memory', label: '记忆管理', icon: <Brain className="h-4 w-4" /> },
-    { id: 'proxy', label: '网络代理', icon: <Globe className="h-4 w-4" /> },
+    { id: 'proxy', label: '网络/数据源', icon: <Globe className="h-4 w-4" /> },
     { id: 'update', label: '软件更新', icon: <RefreshCw className="h-4 w-4" /> },
   ];
 
@@ -327,6 +331,11 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({ isOpen, onClose 
                 onChange={(config) => {
                   setProxyConfig(config);
                   saveConfig({ proxy: config });
+                }}
+                finnhubApiKey={finnhubApiKey}
+                onFinnhubApiKeyChange={(key) => {
+                  setFinnhubApiKey(key);
+                  saveConfig({ finnhubApiKey: key });
                 }}
               />
             )}
@@ -1432,9 +1441,11 @@ const MCPEditForm: React.FC<MCPEditFormProps> = ({ server, status, tools, onBack
 interface ProxySettingsProps {
   config: ProxyConfig;
   onChange: (config: ProxyConfig) => void;
+  finnhubApiKey: string;
+  onFinnhubApiKeyChange: (key: string) => void;
 }
 
-const ProxySettings: React.FC<ProxySettingsProps> = ({ config, onChange }) => {
+const ProxySettings: React.FC<ProxySettingsProps> = ({ config, onChange, finnhubApiKey, onFinnhubApiKeyChange }) => {
   const { colors } = useTheme();
   const proxyModes: { value: ProxyMode; label: string; desc: string }[] = [
     { value: 'none', label: '无代理', desc: '直接连接，不使用任何代理' },
@@ -1496,6 +1507,29 @@ const ProxySettings: React.FC<ProxySettingsProps> = ({ config, onChange }) => {
           </p>
         </div>
       )}
+
+      {/* 美股数据源配置 */}
+      <div className={`pt-6 mt-6 border-t ${colors.isDark ? 'border-slate-700' : 'border-slate-300'}`}>
+        <h3 className={`font-medium ${colors.isDark ? 'text-white' : 'text-slate-800'}`}>美股数据源</h3>
+        <p className={`text-sm mt-1 ${colors.isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+          配置 Finnhub API Key 以启用美股行情、K线、新闻和分析师推荐功能
+        </p>
+        <div className="mt-4">
+          <label className={`block text-sm mb-2 ${colors.isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+            Finnhub API Key
+          </label>
+          <input
+            type="password"
+            value={finnhubApiKey}
+            onChange={(e) => onFinnhubApiKeyChange(e.target.value)}
+            placeholder="输入你的 Finnhub API Key"
+            className={`w-full fin-input rounded-lg px-3 py-2 text-sm ${colors.isDark ? 'text-white' : 'text-slate-800'}`}
+          />
+          <p className={`text-xs mt-2 ${colors.isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+            免费注册获取：https://finnhub.io/register （免费版支持 60次/分钟调用）
+          </p>
+        </div>
+      </div>
     </div>
   );
 };

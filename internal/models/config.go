@@ -61,6 +61,7 @@ type AppConfig struct {
 	Memory        MemoryConfig      `json:"memory"`        // 记忆管理配置
 	Proxy         ProxyConfig       `json:"proxy"`         // 代理配置
 	Layout        LayoutConfig      `json:"layout"`        // 界面布局配置
+	FinnhubAPIKey string            `json:"finnhubApiKey"` // Finnhub API Key (美股数据)
 }
 
 // ProxyMode 代理模式

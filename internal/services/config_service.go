@@ -103,6 +103,16 @@ func (cs *ConfigService) UpdateConfig(config *models.AppConfig) error {
 	return cs.saveConfigLocked()
 }
 
+// GetFinnhubAPIKey 获取 Finnhub API Key（实现 ConfigProvider 接口）
+func (cs *ConfigService) GetFinnhubAPIKey() string {
+	cs.mu.RLock()
+	defer cs.mu.RUnlock()
+	if cs.config == nil {
+		return ""
+	}
+	return cs.config.FinnhubAPIKey
+}
+
 // loadWatchlist 加载自选股列表
 func (cs *ConfigService) loadWatchlist() error {
 	cs.mu.Lock()

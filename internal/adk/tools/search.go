@@ -3,13 +3,15 @@ package tools
 import (
 	"fmt"
 
+	"github.com/run-bigpig/jcp/internal/services"
+
 	"google.golang.org/adk/tool"
 	"google.golang.org/adk/tool/functiontool"
 )
 
 // SearchStocksInput 股票搜索输入参数
 type SearchStocksInput struct {
-	Keyword string `json:"keyword" jsonschema:"搜索关键词，支持股票代码或名称"`
+	Keyword string `json:"keyword" jsonschema:"搜索关键词，支持股票代码或名称，同时搜索A股和美股"`
 	Limit   int    `json:"limit,omitzero" jsonschema:"返回条数，默认10条"`
 }
 
@@ -33,7 +35,26 @@ func (r *Registry) createSearchStocksTool() (tool.Tool, error) {
 			limit = 10
 		}
 
+		// 搜索A股
 		results := r.configService.SearchStocks(input.Keyword, limit)
+
+		// 同时搜索美股（如果配置了 Finnhub API Key）
+		usResults, err := r.marketService.SearchUSStocks(input.Keyword)
+		if err != nil {
+			fmt.Printf("[Tool:search_stocks] 美股搜索跳过: %v\n", err)
+		} else {
+			for _, usr := range usResults {
+				if len(results) >= limit {
+					break
+				}
+				results = append(results, services.StockSearchResult{
+					Symbol:   usr.Symbol,
+					Name:     usr.Name,
+					Industry: usr.Industry,
+					Market:   usr.Market,
+				})
+			}
+		}
 
 		var result string
 		for _, s := range results {
@@ -51,6 +72,6 @@ func (r *Registry) createSearchStocksTool() (tool.Tool, error) {
 
 	return functiontool.New(functiontool.Config{
 		Name:        "search_stocks",
-		Description: "搜索股票，支持按代码或名称搜索",
+		Description: "搜索股票，支持按代码或名称搜索，同时搜索A股和美股",
 	}, handler)
 }

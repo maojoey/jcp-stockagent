@@ -9,8 +9,8 @@ import (
 
 // GetKLineInput K线数据输入参数
 type GetKLineInput struct {
-	Code   string `json:"code" jsonschema:"股票代码，如 sh600519"`
-	Period string `json:"period,omitempty" jsonschema:"K线周期: 1m(5分钟), 1d(日线), 1w(周线), 1mo(月线)，默认1d"`
+	Code   string `json:"code" jsonschema:"股票代码，A股如 sh600519；美股如 AAPL"`
+	Period string `json:"period,omitempty" jsonschema:"K线周期: 1m(分时), 1d(日线), 1w(周线), 1mo(月线)，默认1d"`
 	Days   int    `json:"days,omitzero" jsonschema:"获取天数，默认30"`
 }
 
@@ -61,6 +61,6 @@ func (r *Registry) createKLineTool() (tool.Tool, error) {
 
 	return functiontool.New(functiontool.Config{
 		Name:        "get_kline_data",
-		Description: "获取股票K线数据，支持5分钟线、日线、周线、月线",
+		Description: "获取股票K线数据，支持A股和美股，支持分时线、日线、周线、月线",
 	}, handler)
 }

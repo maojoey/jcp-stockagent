@@ -390,11 +390,12 @@ export namespace models {
 	    memory: MemoryConfig;
 	    proxy: ProxyConfig;
 	    layout: LayoutConfig;
-	
+	    finnhubApiKey: string;
+
 	    static createFrom(source: any = {}) {
 	        return new AppConfig(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.theme = source["theme"];
@@ -406,6 +407,7 @@ export namespace models {
 	        this.memory = this.convertValues(source["memory"], MemoryConfig);
 	        this.proxy = this.convertValues(source["proxy"], ProxyConfig);
 	        this.layout = this.convertValues(source["layout"], LayoutConfig);
+	        this.finnhubApiKey = source["finnhubApiKey"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
